@@ -1,0 +1,11 @@
+'use client';
+import Image from 'next/image';
+import Link from 'next/link';
+import { ArrowLeft, Trash2 } from 'lucide-react';
+import { useCart } from '@/lib/cart-context';
+import { peso } from '@/lib/products';
+export default function CartPage() {
+ const { items, total, remove, setQuantity } = useCart();
+ return <main className="page-wrap"><Link href="/#products" className="text-link"><ArrowLeft size={15}/> Continue shopping</Link><h1 className="page-title" style={{marginTop:20}}>Your shopping cart</h1><p className="muted">Review your items before checking out.</p>
+ {items.length === 0 ? <div className="empty-state" style={{marginTop:28}}><h2>Your cart is empty</h2><p className="muted">Looks like you haven't added anything yet.</p><Link className="button button-dark" href="/#products">Explore products</Link></div> : <div className="cart-layout"><div>{items.map(({product,quantity}) => <div className="cart-line" key={product.id}><div className="cart-thumb"><Image src={product.image} alt={product.name} fill sizes="88px"/></div><div><Link href={`/products/${product.slug}`}><strong>{product.name}</strong></Link><p className="muted" style={{margin:'6px 0'}}>{peso(product.price)}</p><div className="quantity-control"><button onClick={()=>setQuantity(product.id,quantity-1)} aria-label="Decrease quantity">−</button><span>{quantity}</span><button onClick={()=>setQuantity(product.id,quantity+1)} aria-label="Increase quantity" disabled={quantity>=product.stock}>+</button><button onClick={()=>remove(product.id)} aria-label="Remove item" style={{marginLeft:5,color:'#bb4949'}}><Trash2 size={15}/></button></div></div><strong>{peso(product.price*quantity)}</strong></div>)}</div><aside className="summary-panel"><h3>Order summary</h3><div className="summary-row"><span>Subtotal</span><span>{peso(total)}</span></div><div className="summary-row"><span>Shipping</span><span>Calculated later</span></div><div className="summary-row summary-total"><span>Total before shipping</span><span>{peso(total)}</span></div><Link href="/checkout" className="button button-dark full-width">Continue to checkout</Link><p className="muted" style={{fontSize:10}}>Shipping and payment are confirmed before the order is finalized.</p></aside></div>}</main>
+}

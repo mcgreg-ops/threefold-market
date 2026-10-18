@@ -1,0 +1,2 @@
+import Link from 'next/link';
+export default function AdminOrdersPage(){return <main className="page-wrap"><span className="eyebrow">STORE MANAGEMENT</span><h1 className="page-title">Orders</h1><p className="muted">Order management will be enabled after the Supabase orders tables and verified payment flow are connected.</p><div className="notice" style={{marginTop:20}}>No live orders are displayed in this starter project. Do not use the demo checkout to accept real orders.</div><Link href="/admin/products" className="admin-link">← Back to dashboard</Link></main>}
