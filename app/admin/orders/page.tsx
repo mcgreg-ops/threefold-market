@@ -33,8 +33,9 @@ export default function AdminOrdersPage() {
   const [savingId, setSavingId] = useState<string | null>(null);
 
   async function loadOrders() {
-    if (!supabase) return;
-    const { data, error } = await supabase.from('orders')
+    const client = supabase;
+    if (!client) return;
+    const { data, error } = await client.from('orders')
       .select('id,order_number,customer_name,customer_email,customer_phone,shipping_address,subtotal,shipping_fee,total,payment_method,payment_status,order_status,created_at')
       .order('created_at', { ascending: false });
     if (error) {
@@ -43,7 +44,7 @@ export default function AdminOrdersPage() {
     }
     const orderRows = (data ?? []) as Omit<StoreOrder, 'items'>[];
     const itemResults = await Promise.all(orderRows.map(async (order) => {
-      const result = await supabase.from('order_items').select('id,order_id,product_name,unit_price,quantity,line_total').eq('order_id', order.id);
+      const result = await client.from('order_items').select('id,order_id,product_name,unit_price,quantity,line_total').eq('order_id', order.id);
       return { orderId: order.id, data: result.data, error: result.error };
     }));
     const itemError = itemResults.find((result) => result.error)?.error;
