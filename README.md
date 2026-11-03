@@ -5,17 +5,17 @@ A responsive Next.js starter storefront for a mixed-category shop: mountain bike
 ## Included
 
 - Responsive white-theme storefront and category navigation
-- Featured product cards and product detail pages
-- Browser-persisted demo shopping cart
-- Checkout UI preview (does **not** create orders or charge money)
+- Homepage, shop, and product detail pages read active products from Supabase
+- Browser-persisted shopping cart
+- Server-validated order creation with stock reservation; shipping and online payment are not configured
 - Admin login page wired to Supabase email/password authentication when configured
-- Starter admin inventory dashboard that can read the `products` table
+- Admin product management, image upload, and order status management
 - Supabase SQL schema for products, orders, order items, and reviews
 - Vercel-ready environment variable template
 
 ## Not production-ready yet
 
-The starter intentionally does not pretend that payment or checkout is live. Before accepting real orders, implement trusted server-side order creation, stock locking/decrement transactions, delivery fee calculation, payment-gateway checkout creation, signature-verified payment webhooks, admin authorization/RLS policies, and error handling. Never trust a price or payment status sent from the browser. Never expose a Supabase service-role key in client-side code.
+Checkout creates pending orders and reserves stock using database product prices. Shipping fees and online payments are not configured; confirm shipping and payment instructions with customers before dispatch. Add abuse protection and customer notifications before opening checkout to the public. Never trust a price or payment status sent from the browser. Never expose a Supabase service-role key in client-side code.
 
 ## Run locally
 
@@ -31,19 +31,27 @@ Open http://localhost:3000.
 ## Configure Supabase
 
 1. Create a Supabase project.
-2. In Supabase SQL Editor, run `supabase/schema.sql`.
+2. In Supabase SQL Editor, run `supabase/schema.sql`, then `supabase/002_store_security_and_checkout.sql`.
 3. In Supabase Authentication, create your admin user. Keep public sign-ups disabled if only you should administer the store.
-4. Copy `.env.example` to `.env.local` and set:
+4. Add that account as the store admin in SQL Editor, replacing the email with the admin email:
+
+```sql
+insert into public.store_admins (user_id)
+select id from auth.users where email = 'admin@example.com'
+on conflict (user_id) do nothing;
+```
+
+5. Copy `.env.example` to `.env.local` and set:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=YOUR_SUPABASE_PUBLISHABLE_KEY
 ```
 
-5. Restart the development server. Visit `/admin/login`.
-6. Configure Storage policies so only authorized admins can upload images; product images can be publicly readable.
+6. Set these variables in the environment used to run/build this app (for local development, `.env.local`), then restart the development server. Visit `/admin/login`.
+7. Sign in to add products and upload images. The migration grants product and image management only to accounts in `store_admins`.
 
-Important: the SQL starter only creates basic public read policies for active products and approved reviews. Do not expose private order/customer data through public policies. Add admin-role policies and trusted server-side checkout before launch.
+The first SQL file creates the tables and public read policies. The second adds admin-only policies and trusted order creation. Do not expose private order/customer data through public policies.
 
 ## Deploy to GitHub and Vercel
 
@@ -67,10 +75,10 @@ git push -u origin main
 ```text
 app/
   admin/login/page.tsx       # Supabase admin sign-in
-  admin/products/page.tsx    # starter inventory dashboard
-  admin/orders/page.tsx      # orders placeholder
+  admin/products/page.tsx    # admin product management
+  admin/orders/page.tsx      # order and payment status management
   cart/page.tsx              # cart
-  checkout/page.tsx          # checkout UI preview only
+  checkout/page.tsx          # order checkout
   products/[slug]/page.tsx   # product detail
   globals.css                # white theme + responsive layout
   layout.tsx                 # global header/footer/provider
@@ -79,20 +87,21 @@ components/
   product-card.tsx
   store-header.tsx
 lib/
-  cart-context.tsx            # demo cart saved in localStorage
-  products.ts                 # sample products/categories
+  cart-context.tsx            # cart saved in localStorage
+  products.ts                 # product types and currency formatting
+  use-catalog.ts              # active product/category reads from Supabase
   supabase.ts                 # Supabase browser client
 supabase/
   schema.sql                  # starter database schema
+  002_store_security_and_checkout.sql # admin policies and order functions
 ```
 
 ## Before launch checklist
 
-- Replace sample products, prices, photos, ratings, and reviews with real content.
-- Connect storefront product queries and admin CRUD to Supabase.
-- Add secure admin role enforcement and Storage upload policies.
-- Implement order creation with server-side product/stock/price validation.
+- Add real products to Supabase; the homepage, shop, and product detail pages now read the active catalog there.
+- Configure shipping fees and a payment gateway before taking online payments or advertising final totals.
 - Integrate a payment gateway that supports GCash for your approved merchant account.
 - Verify payment webhooks server-side before marking an order paid or changing stock.
-- Add shipping rules, cancellation/refund workflow, privacy notice, and terms.
+- Add customer order confirmation, cancellation/refund workflow, privacy notice, and terms.
+- Add checkout abuse protection and customer order notifications.
 - Test mobile layout, checkout edge cases, RLS policies, and payment failure paths.

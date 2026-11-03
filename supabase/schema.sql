@@ -25,7 +25,7 @@ create table if not exists public.orders (
   subtotal numeric(12,2) not null check (subtotal >= 0),
   shipping_fee numeric(12,2) not null default 0 check (shipping_fee >= 0),
   total numeric(12,2) not null check (total >= 0),
-  payment_method text not null default 'gcash',
+  payment_method text not null default 'cod',
   payment_status text not null default 'pending' check (payment_status in ('pending','paid','failed','refunded')),
   order_status text not null default 'pending' check (order_status in ('pending','processing','shipped','delivered','cancelled')),
   payment_reference text,
@@ -63,13 +63,13 @@ create policy "Anyone can read active products" on public.products
 -- Public storefront may read approved reviews only.
 create policy "Anyone can read approved reviews" on public.reviews
   for select to anon, authenticated using (is_approved = true);
--- No public insert/update/delete policies are intentionally provided for orders,
--- order_items, products, or reviews. Implement trusted server-side checkout,
--- admin role checks, and review submission before production use.
+-- No public write policies are intentionally provided. After this base schema,
+-- run 002_store_security_and_checkout.sql to add store-admin policies and the
+-- trusted order-creation function.
 
-insert into storage.buckets (id, name, public)
-values ('product-images', 'product-images', true)
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('product-images', 'product-images', true, 5242880, array['image/jpeg', 'image/png', 'image/webp', 'image/avif'])
 on conflict (id) do nothing;
 
--- Configure Storage policies from the Supabase dashboard. Keep uploads restricted
--- to authenticated admin users; public read access is appropriate for product images.
+-- The follow-up SQL migration restricts uploads to store admins. Public reads are
+-- appropriate for this product image bucket.
