@@ -7,7 +7,7 @@ import { useCart } from '@/lib/cart-context';
 import { peso } from '@/lib/products';
 import { supabase } from '@/lib/supabase';
 
-type PlacedOrder = { order_number: number; subtotal: number; shipping_fee: number; total: number };
+type PlacedOrder = { order_number: number; subtotal: number; shipping_fee: number; total: number; preferred_courier: string };
 
 export default function CheckoutPage() {
   const { items, total, clear, refresh } = useCart();
@@ -45,6 +45,7 @@ export default function CheckoutPage() {
         p_payment_method: String(form.get('payment') ?? ''),
         p_items: items.map(({ product, quantity }) => ({ id: product.id, quantity, expected_price: product.price })),
         p_checkout_token: requestToken,
+        p_preferred_courier: String(form.get('preferred_courier') ?? ''),
       });
       if (error) {
         if (error.code === 'P0001') {
@@ -66,7 +67,32 @@ export default function CheckoutPage() {
     }
   }
 
-  if (placedOrder) return <main className="page-wrap"><div className="empty-state"><h1>Order received</h1><p>Your order number is <strong>#{placedOrder.order_number}</strong>.</p><p className="muted">Your order total is {peso(Number(placedOrder.total))}. Shipping is not included yet; the store will confirm the delivery fee and payment instructions before dispatch.</p><p className="muted">Your items have been reserved. The store will contact you to confirm the order.</p><Link href="/" className="button button-dark">Return to shop</Link></div></main>;
+  if (placedOrder) return <main className="page-wrap"><div className="empty-state"><h1>Order received</h1><p>Your order number is <strong>#{placedOrder.order_number}</strong>.</p><p className="muted">Preferred courier: {placedOrder.preferred_courier || 'No preference provided'}.</p><p className="muted">Your order total is {peso(Number(placedOrder.total))}. Shipping is not included yet; the store will confirm the courier, delivery fee, and payment instructions before dispatch.</p><p className="muted">Your items have been reserved. The store will contact you to confirm the order.</p><Link href="/" className="button button-dark">Return to shop</Link></div></main>;
 
-  return <main className="page-wrap"><h1 className="page-title">Checkout</h1><p className="muted">Submit your delivery details to place an order. Shipping will be confirmed by the store.</p>{items.length === 0 ? <div className="empty-state"><p>Your cart is empty.</p><Link href="/shop" className="text-link">Continue shopping</Link></div> : <div className="cart-layout"><form className="summary-panel" onSubmit={placeOrder}><h3>Delivery information</h3><div className="field"><label htmlFor="name">Full name</label><input id="name" name="name" required minLength={2} maxLength={120} autoComplete="name" placeholder="Your full name"/></div><div className="form-grid"><div className="field"><label htmlFor="phone">Mobile number</label><input id="phone" name="phone" required minLength={7} maxLength={30} autoComplete="tel" placeholder="09XX XXX XXXX"/></div><div className="field"><label htmlFor="email">Email address</label><input id="email" name="email" type="email" required maxLength={254} autoComplete="email" placeholder="you@example.com"/></div></div><div className="field"><label htmlFor="address">Complete delivery address</label><textarea id="address" name="address" required minLength={8} maxLength={1000} autoComplete="street-address" placeholder="House number, street, barangay, city, province"/></div><div className="field"><label htmlFor="payment">Payment method</label><select id="payment" name="payment" defaultValue="cod"><option value="cod">Cash on delivery</option><option value="bank_transfer">Bank transfer (store will send instructions)</option></select></div><div className="notice">Shipping is not included in the amount below. The store will confirm the delivery fee and payment instructions before dispatch. Payment gateway checkout is not set up yet.</div>{message && <p className="notice" role="alert">{message}</p>}<button className="button button-dark full-width" type="submit" disabled={submitting}>{submitting ? 'Placing order…' : 'Place order'}</button></form><aside className="summary-panel"><h3>Your order</h3>{items.map(({ product, quantity }) => <div className="summary-row" key={product.id}><span>{product.name} × {quantity}</span><strong>{peso(product.price * quantity)}</strong></div>)}<div className="summary-row summary-total"><span>Estimated subtotal</span><span>{peso(total)}</span></div><p className="muted" style={{fontSize:11}}>Final prices and stock are checked against the store database when you place the order.</p></aside></div>}</main>;
+  return <main className="page-wrap">
+    <h1 className="page-title">Checkout</h1>
+    <p className="muted">Submit your delivery details to place an order. The store will confirm your courier and shipping fee.</p>
+    {items.length === 0 ? <div className="empty-state"><p>Your cart is empty.</p><Link href="/shop" className="text-link">Continue shopping</Link></div> : <div className="cart-layout">
+      <form className="summary-panel" onSubmit={placeOrder}>
+        <h3>Delivery information</h3>
+        <div className="field"><label htmlFor="name">Full name</label><input id="name" name="name" required minLength={2} maxLength={120} autoComplete="name" placeholder="Your full name"/></div>
+        <div className="form-grid">
+          <div className="field"><label htmlFor="phone">Mobile number</label><input id="phone" name="phone" required minLength={7} maxLength={30} autoComplete="tel" placeholder="09XX XXX XXXX"/></div>
+          <div className="field"><label htmlFor="email">Email address</label><input id="email" name="email" type="email" required maxLength={254} autoComplete="email" placeholder="you@example.com"/></div>
+        </div>
+        <div className="field"><label htmlFor="address">Complete delivery address</label><textarea id="address" name="address" required minLength={8} maxLength={1000} autoComplete="street-address" placeholder="House number, street, barangay, city, province"/></div>
+        <div className="field"><label htmlFor="preferred-courier">Preferred courier (optional)</label><input id="preferred-courier" name="preferred_courier" maxLength={80} aria-describedby="courier-help" placeholder="For example, JRS Express"/><span className="muted" id="courier-help">You can request any courier. We’ll confirm availability and the final shipping fee before dispatch.</span></div>
+        <div className="field"><label htmlFor="payment">Payment method</label><select id="payment" name="payment" defaultValue="cod"><option value="cod">Cash on delivery</option><option value="bank_transfer">Bank transfer (store will send instructions)</option></select></div>
+        <div className="notice">Shipping is not included in the amount below. We’ll confirm the courier, delivery fee, and payment instructions before dispatch. Online payment is not set up yet.</div>
+        {message && <p className="notice" role="alert">{message}</p>}
+        <button className="button button-dark full-width" type="submit" disabled={submitting}>{submitting ? 'Placing order…' : 'Place order'}</button>
+      </form>
+      <aside className="summary-panel">
+        <h3>Your order</h3>
+        {items.map(({ product, quantity }) => <div className="summary-row" key={product.id}><span>{product.name} × {quantity}</span><strong>{peso(product.price * quantity)}</strong></div>)}
+        <div className="summary-row summary-total"><span>Estimated subtotal</span><span>{peso(total)}</span></div>
+        <p className="muted" style={{fontSize:11}}>Final prices and stock are checked against the store database when you place the order.</p>
+      </aside>
+    </div>}
+  </main>;
 }
